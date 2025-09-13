@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Records</title>
+  <style>
+    :root{--bg:#000;--fg:#fff;--muted:#9a9a9a;--stroke:#fff;}
+    *{box-sizing:border-box;}
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);
+      font:clamp(15px,1.6vw,16px)/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+    .wrap{min-height:100%;display:grid;place-items:center;padding:2rem;}
+    .card{width:min(100%, 1200px);border:1px solid var(--stroke);border-radius:14px;padding:1.25rem;}
+    h1{margin:0 0 1rem 0;font-size:1.25rem;font-weight:600;}
+    .btn, button.btn{display:inline-block;border:1px solid var(--stroke);border-radius:10px;padding:.45rem .8rem;
+      text-decoration:none;background:var(--fg);color:var(--bg);font-weight:600;font-size:14px; cursor:pointer;}
+    .btn.alt{background:transparent;color:var(--fg);}
+    .small{color:var(--muted);font-size:.9rem;}
+    .actions{display:flex; gap:.5rem; flex-wrap:wrap; align-items:center;}
+    .table-wrap{overflow-x:auto;margin-top:1rem;border-radius:10px;}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;}
+    th,td{border:1px solid var(--stroke);padding:.45rem .5rem;text-align:left;vertical-align:top;overflow-wrap:anywhere;}
+    th{font-weight:600;}
+    /* tighter widths */
+    th.w-id, td.w-id{width:6ch;}
+    th.w-doc, td.w-doc{width:10ch;}
+    th.w-method, td.w-method{width:12ch;}
+    th.w-status, td.w-status{width:16ch;}
+    th.w-approval, td.w-approval{width:18ch;}
+    th.w-due, td.w-due{width:12ch;}
+    th.w-user, td.w-user{width:12ch;}
+    th.w-actions, td.w-actions{width:16ch;}
+    ul{margin:.25rem 0;padding-left:1.1rem;}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="actions" style="justify-content:space-between;">
+      <h1>Records</h1>
+      <div class="actions">
+        {% if session['role']=='admin' %}
+          <a class="btn" href="/admin/receipts">Admin: Receipts</a>
+        {% endif %}
+        <a class="btn" href="/record/new">New Record</a>
+        <span class="small">Signed in as: <strong>{{ session['user'] }}</strong>{% if session['role']=='admin' %} (admin){% endif %}</span>
+        <a class="btn alt" href="/logout">Log out</a>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="small" style="border:1px solid var(--stroke);border-radius:10px;padding:.5rem .7rem;margin-top:.5rem;">
+          {{ messages[0] }}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% if session['role'] != 'admin' %}
+      <div style="margin-top:1rem; border:1px solid var(--stroke); border-radius:10px; padding:.6rem .8rem;">
+        <strong>Summary:</strong>
+        <span class="small" style="margin-left:.6rem;">Total Spending (paid, confirmed): {{ "%.2f"|format(spending_confirmed) }}</span>
+        <span class="small" style="margin-left:1rem;">Total Received: {{ "%.2f"|format(received_total) }}</span>
+        <span class="small" style="margin-left:1rem;">Balance: {{ "%.2f"|format(balance) }}</span>
+      </div>
+
+      <div style="margin-top:.75rem; border:1px solid var(--stroke); border-radius:10px; padding:.6rem .8rem;">
+        <strong>Money Received From Admin</strong>
+        {% if my_receipts|length == 0 %}
+          <div class="small">No receipts yet.</div>
+        {% else %}
+          <ul>
+            {% for rc in my_receipts %}
+              <li class="small">
+                {{ rc.date }} — {{ rc.amount }} via {{ rc.method }}{% if rc.number %} (No: {{ rc.number }}){% endif %}
+                {% if rc.attachment %} — <a href="/uploads/{{ rc.attachment }}" target="_blank">attachment</a>{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <div class="table-wrap">
+      {% if records|length == 0 %}
+        <p class="small">No records yet.</p>
+      {% else %}
+        <table>
+          <thead>
+            <tr>
+              <th class="w-id">Project</th>
+              <th class="w-doc">Doc #</th>
+              <th>Cost Center / Work Item</th>
+              <th>Counterparty</th>
+              <th class="w-method">Method</th>
+              <th class="w-status">Payment</th>
+              {% if session['role']=='admin' %}
+                <th class="w-user">Added By</th>
+              {% endif %}
+              <th class="w-approval">Approval</th>
+              <th class="w-due">Due</th>
+              <th>Attachments</th>
+              <th>Recorded</th>
+              <th class="w-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in records %}
+            <tr>
+              <td class="w-id">{{ r.project_number }}</td>
+              <td class="w-doc">{{ r.document_number }}</td>
+              <td>{{ r.cost_center }}</td>
+              <td>{{ r.counterparty }}</td>
+              <td class="w-method">{{ r.payment_method|title }}</td>
+
+              <td class="w-status">
+                {{ r.payment_status|title }}
+                <div class="small">
+                  {% if r.payment_status == 'partially paid' %}
+                    Total: {{ r.total_amount }} • Paid: {{ r.amount_paid or '0.00' }}
+                  {% elif r.payment_status == 'paid' %}
+                    Paid: {{ r.amount_paid or r.total_amount or '0.00' }}
+                  {% else %}
+                    Paid: 0.00
+                  {% endif %}
+                </div>
+              </td>
+
+              {% if session['role']=='admin' %}
+                <td class="w-user">{{ r.recorded_by }}</td>
+              {% endif %}
+
+              <td class="w-approval">
+                {{ (r.get('approval_status') or 'pending') | title }}
+                {% if r.get('approval_action_by') %}
+                  <div class="small">by {{ r.approval_action_by }} • {{ r.approval_action_at }}</div>
+                {% endif %}
+              </td>
+
+              <td class="w-due">{{ r.payment_due_date }}</td>
+              <td>
+                {% if r.attachments %}
+                  <ul>
+                    {% for f in r.attachments %}
+                      <li>
+                        <a href="/uploads/{{ f }}" target="_blank">
+                          {{ (f.split('/')[-1]).split('_',1)[-1] }}
+                        </a>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% else %}
+                  <span class="small">—</span>
+                {% endif %}
+              </td>
+              <td>
+                <div>{{ r.recorded_by }}</div>
+                <div class="small">{{ r.created_at }}</div>
+              </td>
+              <td>
+                <div class="actions">
+                  {% set is_owner = (r.recorded_by == session['user']) %}
+                  {% if r.get('approval_status') == 'pending' and (is_owner or session['role']=='admin') %}
+                    <form method="post" action="/record/{{ r.id }}/delete" onsubmit="return confirm('Delete this pending record?');">
+                      <button class="btn" type="submit" title="Delete">Delete</button>
+                    </form>
+                  {% endif %}
+                  {% if session['role']=='admin' and r.get('approval_status') == 'pending' %}
+                    <form method="post" action="/record/{{ r.id }}/approve">
+                      <button class="btn" type="submit" title="Confirm">Confirm</button>
+                    </form>
+                    <form method="post" action="/record/{{ r.id }}/reject">
+                      <button class="btn alt" type="submit" title="Reject">Reject</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    </div>
+  </div>
+</div>
+</body>
+</html>

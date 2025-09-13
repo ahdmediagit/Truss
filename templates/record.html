@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>New Record</title>
+  <style>
+    :root { --bg:#000; --fg:#fff; --muted:#9a9a9a; --stroke:#fff; }
+    * { box-sizing:border-box; }
+    html { color-scheme: dark; }
+    html,body{
+      height:100%; margin:0; background:var(--bg); color:var(--fg);
+      font:clamp(15px,1.6vw,16px)/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+    .wrap{min-height:100%; display:grid; place-items:center; padding:2rem;}
+    .card{width:min(100%, 720px); border:1px solid var(--stroke); border-radius:14px; padding:1.25rem;}
+    h1{margin:0 0 1rem 0; font-size:1.25rem; font-weight:600;}
+    form{display:grid; gap:.9rem;}
+    .grid{display:grid; gap:.9rem;}
+    @media (min-width:640px){ .grid-2{ grid-template-columns:1fr 1fr; } }
+    label{font-size:.9rem; color:var(--muted);}
+    input, select, textarea{
+      width:100%; padding:.8rem .9rem; background:transparent; border:1px solid var(--stroke);
+      border-radius:10px; color:var(--fg); outline:none; font-size:16px;
+    }
+    select { background: var(--bg); color: var(--fg); }
+    option { background:#000; color:#fff; }
+    textarea{min-height:96px; resize:vertical;}
+    input:focus, select:focus, textarea:focus{ outline:2px solid var(--fg); outline-offset:2px; }
+    .btn{cursor:pointer; border:1px solid var(--stroke); background:var(--fg); color:var(--bg);
+      padding:.85rem 1rem; border-radius:10px; font-weight:600; font-size:16px;}
+    .row{display:flex; gap:.75rem; flex-wrap:wrap;}
+    a.btn-alt{background:transparent; color:var(--fg); text-decoration:none; display:inline-block;}
+    .flash{border:1px solid var(--stroke); border-radius:10px; padding:.7rem .9rem; margin-bottom:.9rem;}
+    .flash::before{content:"⚠️ ";}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>New Record</h1>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash" role="alert" aria-live="polite">{{ messages[0] }}</div>
+      {% endif %}
+    {% endwith %}
+
+    <form method="post" action="/record/new" enctype="multipart/form-data" autocomplete="on">
+      <div class="grid grid-2">
+        <div>
+          <label for="project_number">Project Number</label>
+          <input id="project_number" name="project_number" required />
+        </div>
+        <div>
+          <label for="document_number">Document / Invoice Number</label>
+          <input id="document_number" name="document_number" required />
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div>
+          <label for="cost_center">Cost Center / Work Item</label>
+          <input id="cost_center" name="cost_center" placeholder="e.g., concreting, plastering, steel purchase" />
+        </div>
+        <div>
+          <label for="counterparty">Counterparty / Supplier</label>
+          <input id="counterparty" name="counterparty" placeholder="contractor, vendor, payee" />
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div>
+          <label for="payment_method">Payment Method</label>
+          <select id="payment_method" name="payment_method">
+            {% for m in payment_methods %}
+              <option value="{{m}}">{{m.title()}}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="payment_due_date">Payment Due Date</label>
+          <input id="payment_due_date" name="payment_due_date" type="date" />
+        </div>
+      </div>
+
+      <div>
+        <label for="deductions">Deductions / Withholdings</label>
+        <input id="deductions" name="deductions" placeholder="tax, insurance, discounts (free text)" />
+      </div>
+
+      <div class="grid grid-2">
+        <div>
+          <label for="unit_of_measure">Unit of Measure</label>
+          <input id="unit_of_measure" name="unit_of_measure" placeholder="e.g., ton, m², hour" />
+        </div>
+        <div>
+          <label for="quantity">Quantity</label>
+          <input id="quantity" name="quantity" type="number" step="any" placeholder="e.g., 5" />
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div>
+          <label for="payment_status">Payment Status</label>
+          <select id="payment_status" name="payment_status">
+            {% for s in payment_statuses %}
+              <option value="{{s}}">{{s.title()}}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>Recorded By (User)</label>
+          <input value="{{ session['user'] }}" disabled />
+        </div>
+      </div>
+
+      <!-- Amount Paid always required; Total appears only for "Partially paid" -->
+      <div class="grid grid-2">
+        <div>
+          <label for="amount_paid">Amount Paid</label>
+          <input id="amount_paid" name="amount_paid" type="number" step="0.01" min="0" placeholder="e.g., 1200.00" required />
+        </div>
+        <div id="total-wrap" hidden>
+          <label for="total_amount">Total Amount (only for partially paid)</label>
+          <input id="total_amount" name="total_amount" type="number" step="0.01" min="0" placeholder="e.g., 2500.00" />
+        </div>
+      </div>
+
+      <div>
+        <label for="attachments">Attachments (multiple)</label>
+        <input id="attachments" name="attachments[]" type="file" multiple />
+      </div>
+
+      <div class="row">
+        <button class="btn" type="submit">Save Record</button>
+        <a class="btn btn-alt" href="/records">Back to Records</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const statusSel = document.getElementById('payment_status');
+  const totalWrap = document.getElementById('total-wrap');
+  const total = document.getElementById('total_amount');
+
+  function syncTotal() {
+    const show = statusSel.value === 'partially paid';
+    totalWrap.hidden = !show;
+    total.required = show;
+    if (!show) total.value = '';
+  }
+  statusSel.addEventListener('change', syncTotal);
+  syncTotal(); // init
+</script>
+</body>
+</html>

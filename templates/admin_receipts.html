@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin · Receipts</title>
+  <style>
+    :root{--bg:#000;--fg:#fff;--muted:#9a9a9a;--stroke:#fff;}
+    *{box-sizing:border-box;}
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);
+      font:clamp(15px,1.6vw,16px)/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+    .wrap{min-height:100%;display:grid;place-items:center;padding:2rem;}
+    .card{width:min(100%, 900px);border:1px solid var(--stroke);border-radius:14px;padding:1.25rem;}
+    h1{margin:0 0 1rem 0;font-size:1.25rem;font-weight:600;}
+    form{display:grid;gap:.9rem;}
+    .grid{display:grid;gap:.9rem;}
+    @media (min-width:720px){ .grid-3{ grid-template-columns: 1fr 1fr 1fr; } }
+    label{font-size:.9rem;color:var(--muted);}
+    input,select{
+      width:100%;padding:.8rem .9rem;background:transparent;border:1px solid var(--stroke);
+      border-radius:10px;color:var(--fg);outline:none;font-size:16px;
+    }
+    select { background: var(--bg); color: var(--fg); }
+    option{background:#000;color:#fff;}
+    .btn{cursor:pointer;border:1px solid var(--stroke);background:var(--fg);color:var(--bg);
+      padding:.85rem 1rem;border-radius:10px;font-weight:600;font-size:16px;}
+    a.btn-alt{background:transparent;color:var(--fg);text-decoration:none;display:inline-block;}
+    .flash{border:1px solid var(--stroke);border-radius:10px;padding:.6rem .8rem;margin-bottom:.9rem;}
+    .flash::before{content:"⚠️ ";}
+    table{width:100%;border-collapse:collapse;margin-top:1rem;}
+    th,td{border:1px solid var(--stroke);padding:.45rem .5rem;text-align:left;vertical-align:top;overflow-wrap:anywhere;}
+    th{font-weight:600;}
+    .actions{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="actions" style="justify-content:space-between;">
+      <h1>Admin · Receipts</h1>
+      <div class="actions">
+        <a class="btn-alt" href="/records">← Back to Records</a>
+        <a class="btn" href="/record/new">New Record</a>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash" role="alert" aria-live="polite">{{ messages[0] }}</div>
+      {% endif %}
+    {% endwith %}
+
+    <form method="post" action="/admin/receipts" enctype="multipart/form-data" autocomplete="on">
+      <div class="grid grid-3">
+        <div>
+          <label for="to_user">User</label>
+          <select id="to_user" name="to_user" required>
+            <option value="" disabled selected>Select user</option>
+            {% for u in users %}
+              <option value="{{u}}">{{u}}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="amount">Amount</label>
+          <input id="amount" name="amount" type="number" step="0.01" min="0.01" required />
+        </div>
+        <div>
+          <label for="date">Date</label>
+          <input id="date" name="date" type="date" required />
+        </div>
+      </div>
+
+      <div class="grid grid-3">
+        <div>
+          <label for="number">Reference / Number</label>
+          <input id="number" name="number" placeholder="receipt #, check #, etc." />
+        </div>
+        <div>
+          <label for="method">Method</label>
+          <select id="method" name="method" required>
+            {% for m in payment_methods %}
+              <option value="{{m}}">{{m.title()}}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="attachment">Attachment</label>
+          <input id="attachment" name="attachment" type="file" />
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:.5rem;">
+        <button class="btn" type="submit">Save Receipt</button>
+      </div>
+    </form>
+
+    <div style="margin-top:1rem;">
+      <strong>Recent Receipts</strong>
+      {% if receipts|length == 0 %}
+        <div class="small">No receipts yet.</div>
+      {% else %}
+        <table>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Amount</th>
+              <th>Date</th>
+              <th>Method</th>
+              <th>Number</th>
+              <th>Attachment</th>
+              <th>Recorded</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for rc in receipts %}
+              <tr>
+                <td>{{ rc.to_user }}</td>
+                <td>{{ rc.amount }}</td>
+                <td>{{ rc.date }}</td>
+                <td>{{ rc.method|title }}</td>
+                <td>{{ rc.number }}</td>
+                <td>
+                  {% if rc.attachment %}
+                    <a href="/uploads/{{ rc.attachment }}" target="_blank">{{ (rc.attachment.split('/')[-1]).split('_',2)[-1] }}</a>
+                  {% else %}<span class="small">—</span>{% endif %}
+                </td>
+                <td class="small">{{ rc.created_by }} • {{ rc.created_at }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

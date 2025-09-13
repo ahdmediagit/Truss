@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login</title>
+    <style>
+      :root { --bg:#000; --fg:#fff; --muted:#9a9a9a; --stroke:#fff; }
+      * { box-sizing:border-box; }
+      html,body {
+        height:100%; margin:0;
+        background:var(--bg); color:var(--fg);
+        font:clamp(15px, 1.6vw, 16px)/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      .wrap { min-height:100%; display:grid; place-items:center; padding:2rem; }
+      .panel { width:min(100%, 420px); border:1px solid var(--stroke); border-radius:14px; padding:1.5rem; }
+      h1 { margin:0 0 1rem 0; font-size:1.25rem; font-weight:600; }
+      form { display:grid; gap:.9rem; }
+      label { font-size:.9rem; color:var(--muted); }
+      input {
+        width:100%; padding:.8rem .9rem; background:transparent; border:1px solid var(--stroke);
+        border-radius:10px; color:var(--fg); outline:none; font-size:16px;
+      }
+      input::placeholder { color:#bdbdbd; }
+      input:focus { outline:2px solid var(--fg); outline-offset:2px; }
+      .btn {
+        cursor:pointer; border:1px solid var(--stroke); background:var(--fg); color:var(--bg);
+        padding:.85rem 1rem; border-radius:10px; font-weight:600; font-size:16px;
+      }
+      .flash { border:1px solid var(--stroke); border-radius:10px; padding:.7rem .9rem; margin-bottom:.9rem; }
+      .flash::before { content:"⚠️ "; }
+      [hidden] { display:none !important; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="panel" aria-labelledby="title">
+        <h1 id="title">Account</h1>
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="flash" role="alert" aria-live="polite">{{ messages[0] }}</div>
+          {% endif %}
+        {% endwith %}
+
+        <!-- Log in -->
+        <form id="login-form" method="post" action="/login">
+          <div>
+            <label for="login-username">Username</label>
+            <input id="login-username" name="username" type="text" placeholder="Enter username" required />
+          </div>
+          <div>
+            <label for="login-password">Password</label>
+            <input id="login-password" name="password" type="password" placeholder="Enter password" required />
+          </div>
+          <button class="btn" type="submit">Log in</button>
+        </form>
+
+        <!-- Create account button -->
+        <div style="margin-top:1rem; text-align:center;">
+          <button id="show-register" class="btn" style="background:transparent; color:var(--fg);">Create account</button>
+        </div>
+
+        <!-- Register form (hidden until button clicked) -->
+        <form id="register-form" method="post" action="/register" hidden>
+          <div>
+            <label for="reg-username">Username</label>
+            <input id="reg-username" name="username" type="text" minlength="3" placeholder="Choose a username" required />
+          </div>
+          <div>
+            <label for="reg-password">Password</label>
+            <input id="reg-password" name="password" type="password" minlength="6" placeholder="Create a password" required />
+          </div>
+          <button class="btn" type="submit">Create account</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      const btn = document.getElementById('show-register');
+      const regForm = document.getElementById('register-form');
+      const loginForm = document.getElementById('login-form');
+      btn.addEventListener('click', () => {
+        regForm.hidden = false; loginForm.hidden = true; btn.hidden = true;
+      });
+    </script>
+  </body>
+</html>

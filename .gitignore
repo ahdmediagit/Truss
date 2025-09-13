@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+uploads/
+users.json
+records.json
+receipts.json
+.env
